@@ -1,0 +1,65 @@
+# ================= DASHBOARD =================
+def open_dashboard():
+    root = tk.Tk()
+    root.title("DASHBOARD")
+    root.state("zoomed")
+    root.configure(bg="#1f6aa5")
+
+    tk.Label(root, text="SCHOOL DASHBOARD",
+             font=("Arial", 18, "bold"),
+             bg="#1f6aa5", fg="white").pack(pady=20)
+
+    # ===== SCHOOL SYSTEM BUTTON =====
+    tk.Button(root, text="OPEN STUDENT SYSTEM",
+              bg="white", fg="black",
+              width=25,
+              command=lambda: open_main_app(root)
+              ).pack(pady=10)
+
+    # ===== TEACHERS SYSTEM BUTTON =====
+    tk.Button(root, text="OPEN STAFF SYSTEM",
+              bg="purple", fg="white",
+              width=25,
+              command=lambda: open_teachers_app(root)
+              ).pack(pady=10)
+    
+    # ===== ⭐ BURSAR SYSTEM BUTTON (NEW) =====
+    tk.Button(root, text="OPEN PAYMENT SYSTEM",
+              bg="darkgreen", fg="white",
+              width=25,
+              command=lambda: open_bursar_app(root)
+              ).pack(pady=10)
+
+
+    set_icon(root)
+    root.mainloop()
+
+# ================= OPEN MAIN APP =================
+def open_main_app(dashboard_root):
+    dashboard_root.destroy()
+    root = tk.Tk()
+    root.title("STUDENTS DASHBOARD")
+    root.state("zoomed")
+    set_icon(root)
+    SchoolApp(root)
+    root.mainloop()
+
+def open_teachers_app(dashboard_root):
+    dashboard_root.destroy()
+    root = tk.Tk()
+    root.title("TEACHERS DASHBOARD")
+    root.state("zoomed")
+    set_icon(root)
+    TeachersApp(root)
+    root.mainloop()
+    
+ # ================= ⭐ OPEN BURSAR APP (NEW) =================
+def open_bursar_app(dashboard_root):
+    dashboard_root.destroy()
+    root = tk.Tk()
+    root.title("BURSAR DASHBOARD")
+    root.state("zoomed")
+    set_icon(root)
+
+    BursarApp(root)   # 👈 you must create this class
+    root.mainloop()   
