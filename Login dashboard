@@ -1,0 +1,106 @@
+# ================= LOGIN =================
+class LoginApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("LOGIN")
+        self.root.state("zoomed")   # Windows fullscreen (recommended)
+
+        tk.Label(root, text="USERNAME").pack(pady=5)
+        self.username = tk.Entry(root)
+        self.username.pack()
+
+        tk.Label(root, text="PASSWORD").pack(pady=5)
+        self.password = tk.Entry(root, show="*")
+        self.password.pack()
+
+        tk.Button(root, text="LOGIN", bg="green", fg="white",
+                  command=self.login).pack(pady=10)
+
+        tk.Button(root, text="CHANGE PASSWORD", bg="blue", fg="white",
+                  command=self.change_password).pack(pady=5)
+        tk.Button(root, text="Forgot Password?", fg="blue",
+          command=self.forgot_password).pack()
+    def login(self):
+        user = self.username.get()
+        pwd = self.password.get()
+
+        result = cursor.execute(
+            "SELECT * FROM users WHERE username=? AND password=?",
+            (user, pwd)
+        ).fetchone()
+
+        if result:
+            self.root.destroy()
+            open_dashboard()
+        else:
+            messagebox.showerror("Error", "Invalid Login")
+
+    def change_password(self):
+        win = tk.Toplevel(self.root)
+        win.title("Change Password")
+        win.geometry("300x200")
+
+        tk.Label(win, text="Old Password").pack()
+        old = tk.Entry(win, show="*")
+        old.pack()
+
+        tk.Label(win, text="New Password").pack()
+        new = tk.Entry(win, show="*")
+        new.pack()
+
+        def update_pass():
+            if cursor.execute(
+                "SELECT * FROM users WHERE username='admin' AND password=?",
+                (old.get(),)
+            ).fetchone():
+
+                cursor.execute(
+                    "UPDATE users SET password=? WHERE username='admin'",
+                    (new.get(),)
+                )
+                conn.commit()
+                messagebox.showinfo("Success", "Password Changed")
+                win.destroy()
+            else:
+                messagebox.showerror("Error", "Wrong Old Password")
+
+        tk.Button(win, text="UPDATE", command=update_pass).pack(pady=10)
+    def forgot_password(self):
+                            win = tk.Toplevel(self.root)
+                            win.title("Recover Password")
+                            win.geometry("300x200")
+
+                            tk.Label(win, text="Enter Username").pack(pady=5)
+                            username_entry = tk.Entry(win)
+                            username_entry.pack()
+
+                            tk.Label(win, text="New Password").pack(pady=5)
+                            new_pass = tk.Entry(win, show="*")
+                            new_pass.pack()
+
+                            def reset():
+                                user = username_entry.get()
+                                pwd = new_pass.get()
+
+                                if user == "" or pwd == "":
+                                    messagebox.showerror("Error", "All fields required")
+                                    return
+
+                                data = cursor.execute(
+                                    "SELECT * FROM users WHERE username=?",
+                                    (user,)
+                                ).fetchone()
+
+                                if data:
+                                    cursor.execute(
+                                        "UPDATE users SET password=? WHERE username=?",
+                                        (pwd, user)
+                                    )
+                                    conn.commit()
+                                    messagebox.showinfo("Success", "Password Reset Successful")
+                                    win.destroy()
+                                else:
+                                    messagebox.showerror("Error", "Username not found")
+
+                            tk.Button(win, text="RESET PASSWORD", bg="green",
+                                      fg="white", command=reset).pack(pady=10)
