@@ -1,0 +1,305 @@
+ # ================= TEACHERS APP ==============
+
+class TeachersApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("STAFF MANAGEMENT SYSTEM ANGEL NAITBJ®")
+        self.root.state("zoomed")
+        self.root.configure(bg="#0b1e3a")
+
+        # ================= DATABASE =================
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS teachers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            subject TEXT,
+            class_assigned TEXT,
+            contact TEXT,
+            address TEXT,
+            qualification TEXT,
+            salary TEXT,
+            date_employed TEXT
+        )
+        """)
+        conn.commit()
+
+        # ================= VARIABLES =================
+        self.name = tk.StringVar()
+        self.subject = tk.StringVar()
+        self.class_assigned = tk.StringVar()
+        self.contact = tk.StringVar()
+        self.address = tk.StringVar()
+        self.qualification = tk.StringVar()
+        self.salary = tk.StringVar()
+        self.date_employed = tk.StringVar()
+
+        self.selected_id = None
+
+        self.ui()
+        self.load_teachers()
+
+    # ================= UI =================
+    def ui(self):
+
+        tk.Label(
+            self.root,
+            text="STAFF MANAGEMENT SYSTEM ANGEL NAITBJ®",
+            font=("Arial", 22, "bold"),
+            bg="#1f6aa5",
+            fg="white"
+        ).pack(fill="x")
+
+        form = tk.LabelFrame(
+            self.root,
+            text=" TEACHER FORM ",
+            bg="#102542",
+            fg="white"
+        )
+        form.pack(fill="x", padx=10, pady=10)
+
+        # Row 0
+        tk.Label(form, text="Name").grid(row=0, column=0, padx=5, pady=5)
+        tk.Entry(form, textvariable=self.name, width=25).grid(row=0, column=1, padx=5, pady=5)
+
+        tk.Label(form, text="Subject").grid(row=0, column=2, padx=5, pady=5)
+        tk.Entry(form, textvariable=self.subject, width=25).grid(row=0, column=3, padx=5, pady=5)
+
+        tk.Label(form, text="Class").grid(row=0, column=4, padx=5, pady=5)
+        tk.Entry(form, textvariable=self.class_assigned, width=25).grid(row=0, column=5, padx=5, pady=5)
+
+        # Row 1
+        tk.Label(form, text="Contact").grid(row=1, column=0, padx=5, pady=5)
+        tk.Entry(form, textvariable=self.contact, width=25).grid(row=1, column=1, padx=5, pady=5)
+
+        tk.Label(form, text="Address").grid(row=1, column=2, padx=5, pady=5)
+        tk.Entry(form, textvariable=self.address, width=25).grid(row=1, column=3, padx=5, pady=5)
+
+        tk.Label(form, text="Qualification").grid(row=1, column=4, padx=5, pady=5)
+        tk.Entry(form, textvariable=self.qualification, width=25).grid(row=1, column=5, padx=5, pady=5)
+
+        # Row 2
+        tk.Label(form, text="Salary").grid(row=2, column=0, padx=5, pady=5)
+        tk.Entry(form, textvariable=self.salary, width=25).grid(row=2, column=1, padx=5, pady=5)
+
+        tk.Label(form, text="Date Employed").grid(row=2, column=2, padx=5, pady=5)
+        tk.Entry(form, textvariable=self.date_employed, width=25).grid(row=2, column=3, padx=5, pady=5)
+
+        # Buttons
+        tk.Button(
+            form,
+            text="ADD",
+            bg="green",
+            fg="white",
+            command=self.add_teacher
+        ).grid(row=3, column=0, padx=5, pady=10)
+
+        tk.Button(
+            form,
+            text="UPDATE",
+            bg="blue",
+            fg="white",
+            command=self.update_teacher
+        ).grid(row=3, column=1, padx=5, pady=10)
+
+        tk.Button(
+            form,
+            text="DELETE",
+            bg="red",
+            fg="white",
+            command=self.delete_teacher
+        ).grid(row=3, column=2, padx=5, pady=10)
+
+        tk.Button(
+            form,
+            text="CLEAR",
+            command=self.clear
+        ).grid(row=3, column=3, padx=5, pady=10)
+
+        tk.Button(
+            form,
+            text="BACK",
+            bg="black",
+            fg="white",
+            command=self.back
+        ).grid(row=3, column=4, padx=5, pady=10)
+
+        # ================= TABLE FRAME =================
+        frame = tk.Frame(self.root)
+        frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Vertical Scrollbar
+        scroll_y = ttk.Scrollbar(frame, orient="vertical")
+        scroll_y.pack(side="right", fill="y")
+
+        # Horizontal Scrollbar
+        scroll_x = ttk.Scrollbar(frame, orient="horizontal")
+        scroll_x.pack(side="bottom", fill="x")
+
+        # Treeview
+        self.tree = ttk.Treeview(
+            frame,
+            columns=(
+                "ID",
+                "Name",
+                "Subject",
+                "Class",
+                "Contact",
+                "Address",
+                "Qualification",
+                "Salary",
+                "Date Employed"
+            ),
+            show="headings",
+            yscrollcommand=scroll_y.set,
+            xscrollcommand=scroll_x.set
+        )
+
+        scroll_y.config(command=self.tree.yview)
+        scroll_x.config(command=self.tree.xview)
+
+        columns = (
+            "ID",
+            "Name",
+            "Subject",
+            "Class",
+            "Contact",
+            "Address",
+            "Qualification",
+            "Salary",
+            "Date Employed"
+        )
+
+        for col in columns:
+            self.tree.heading(col, text=col)
+
+        self.tree.column("ID", width=80, anchor="center")
+        self.tree.column("Name", width=180)
+        self.tree.column("Subject", width=150)
+        self.tree.column("Class", width=120)
+        self.tree.column("Contact", width=150)
+        self.tree.column("Address", width=250)
+        self.tree.column("Qualification", width=180)
+        self.tree.column("Salary", width=120)
+        self.tree.column("Date Employed", width=150)
+
+        self.tree.pack(fill="both", expand=True)
+
+        self.tree.bind("<ButtonRelease-1>", self.select_teacher)
+
+    # ================= ADD =================
+    def add_teacher(self):
+        conn.execute("""
+        INSERT INTO teachers
+        (
+            name,
+            subject,
+            class_assigned,
+            contact,
+            address,
+            qualification,
+            salary,
+            date_employed
+        )
+        VALUES (?,?,?,?,?,?,?,?)
+        """, (
+            self.name.get(),
+            self.subject.get(),
+            self.class_assigned.get(),
+            self.contact.get(),
+            self.address.get(),
+            self.qualification.get(),
+            self.salary.get(),
+            self.date_employed.get()
+        ))
+
+        conn.commit()
+        self.load_teachers()
+        self.clear()
+
+    # ================= LOAD =================
+    def load_teachers(self):
+        self.tree.delete(*self.tree.get_children())
+
+        for row in conn.execute("SELECT * FROM teachers"):
+            self.tree.insert("", "end", values=row)
+
+    # ================= SELECT =================
+    def select_teacher(self, e):
+        row = self.tree.item(self.tree.focus(), "values")
+
+        if row:
+            self.selected_id = row[0]
+            self.name.set(row[1])
+            self.subject.set(row[2])
+            self.class_assigned.set(row[3])
+            self.contact.set(row[4])
+            self.address.set(row[5])
+            self.qualification.set(row[6])
+            self.salary.set(row[7])
+            self.date_employed.set(row[8])
+
+    # ================= UPDATE =================
+    def update_teacher(self):
+
+        if not self.selected_id:
+            return
+
+        conn.execute("""
+        UPDATE teachers
+        SET
+            name=?,
+            subject=?,
+            class_assigned=?,
+            contact=?,
+            address=?,
+            qualification=?,
+            salary=?,
+            date_employed=?
+        WHERE id=?
+        """, (
+            self.name.get(),
+            self.subject.get(),
+            self.class_assigned.get(),
+            self.contact.get(),
+            self.address.get(),
+            self.qualification.get(),
+            self.salary.get(),
+            self.date_employed.get(),
+            self.selected_id
+        ))
+
+        conn.commit()
+        self.load_teachers()
+        self.clear()
+
+    # ================= DELETE =================
+    def delete_teacher(self):
+
+        if self.selected_id:
+            conn.execute(
+                "DELETE FROM teachers WHERE id=?",
+                (self.selected_id,)
+            )
+
+            conn.commit()
+            self.load_teachers()
+            self.clear()
+
+    # ================= CLEAR =================
+    def clear(self):
+
+        self.name.set("")
+        self.subject.set("")
+        self.class_assigned.set("")
+        self.contact.set("")
+        self.address.set("")
+        self.qualification.set("")
+        self.salary.set("")
+        self.date_employed.set("")
+
+        self.selected_id = None
+
+    # ================= BACK =================
+    def back(self):
+        self.root.destroy()
+        open_dashboard()
