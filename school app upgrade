@@ -1,0 +1,675 @@
+# -*- coding: utf-8 -*-
+import tkinter as tk
+from tkinter import ttk, messagebox
+import sqlite3
+
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+from openpyxl import Workbook
+
+import os
+import sys
+
+def resource_path(relative_path):
+    """Get absolute path to resource (works for .exe and normal run)"""
+    try:
+        base_path = sys._MEIPASS  # PyInstaller temp folder
+    except AttributeError:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+
+ICON_PATH = resource_path("navenie.ico")
+
+
+def set_icon(window):
+    """Safe icon setter (EXE compatible)"""
+    try:
+        window.iconbitmap(ICON_PATH)
+    except Exception as e:
+        print("Icon load failed:", e)
+
+# ================= DATABASE =================
+conn = sqlite3.connect("school.db")
+cursor = conn.cursor()
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS students (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT,
+    admission TEXT,
+    gender TEXT,
+    class_name TEXT,
+    dob TEXT,
+    parent TEXT,
+    address TEXT
+)
+""")
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id INTEGER,
+    term TEXT,
+    year TEXT,
+    subject TEXT,
+    ca INTEGER,
+    exam INTEGER,
+    total INTEGER
+)
+""")
+
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE,
+    password TEXT
+)
+""")
+
+# Default admin (only once)
+cursor.execute("INSERT OR IGNORE INTO users (username, password) VALUES ('admin','admin')")
+conn.commit()
+
+# ================= LOGIN =================
+class LoginApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("LOGIN")
+        self.root.geometry("300x220")
+
+        tk.Label(root, text="USERNAME").pack(pady=5)
+        self.username = tk.Entry(root)
+        self.username.pack()
+
+        tk.Label(root, text="PASSWORD").pack(pady=5)
+        self.password = tk.Entry(root, show="*")
+        self.password.pack()
+
+        tk.Button(root, text="LOGIN", bg="green", fg="white",
+                  command=self.login).pack(pady=10)
+
+        tk.Button(root, text="CHANGE PASSWORD", bg="blue", fg="white",
+                  command=self.change_password).pack(pady=5)
+        tk.Button(root, text="Forgot Password?", fg="blue",
+          command=self.forgot_password).pack()
+    def login(self):
+        user = self.username.get()
+        pwd = self.password.get()
+
+        result = cursor.execute(
+            "SELECT * FROM users WHERE username=? AND password=?",
+            (user, pwd)
+        ).fetchone()
+
+        if result:
+            self.root.destroy()
+            open_dashboard()
+        else:
+            messagebox.showerror("Error", "Invalid Login")
+
+    def change_password(self):
+        win = tk.Toplevel(self.root)
+        win.title("Change Password")
+        win.geometry("300x200")
+
+        tk.Label(win, text="Old Password").pack()
+        old = tk.Entry(win, show="*")
+        old.pack()
+
+        tk.Label(win, text="New Password").pack()
+        new = tk.Entry(win, show="*")
+        new.pack()
+
+        def update_pass():
+            if cursor.execute(
+                "SELECT * FROM users WHERE username='admin' AND password=?",
+                (old.get(),)
+            ).fetchone():
+
+                cursor.execute(
+                    "UPDATE users SET password=? WHERE username='admin'",
+                    (new.get(),)
+                )
+                conn.commit()
+                messagebox.showinfo("Success", "Password Changed")
+                win.destroy()
+            else:
+                messagebox.showerror("Error", "Wrong Old Password")
+
+        tk.Button(win, text="UPDATE", command=update_pass).pack(pady=10)
+    def forgot_password(self):
+                            win = tk.Toplevel(self.root)
+                            win.title("Recover Password")
+                            win.geometry("300x200")
+
+                            tk.Label(win, text="Enter Username").pack(pady=5)
+                            username_entry = tk.Entry(win)
+                            username_entry.pack()
+
+                            tk.Label(win, text="New Password").pack(pady=5)
+                            new_pass = tk.Entry(win, show="*")
+                            new_pass.pack()
+
+                            def reset():
+                                user = username_entry.get()
+                                pwd = new_pass.get()
+
+                                if user == "" or pwd == "":
+                                    messagebox.showerror("Error", "All fields required")
+                                    return
+
+                                data = cursor.execute(
+                                    "SELECT * FROM users WHERE username=?",
+                                    (user,)
+                                ).fetchone()
+
+                                if data:
+                                    cursor.execute(
+                                        "UPDATE users SET password=? WHERE username=?",
+                                        (pwd, user)
+                                    )
+                                    conn.commit()
+                                    messagebox.showinfo("Success", "Password Reset Successful")
+                                    win.destroy()
+                                else:
+                                    messagebox.showerror("Error", "Username not found")
+
+                            tk.Button(win, text="RESET PASSWORD", bg="green",
+                                      fg="white", command=reset).pack(pady=10)
+# ================= DASHBOARD =================
+def open_dashboard():
+    root = tk.Tk()
+    root.title("DASHBOARD")
+    root.geometry("400x300")
+    root.configure(bg="#1f6aa5")
+
+    tk.Label(root, text="SCHOOL DASHBOARD",
+             font=("Arial", 18, "bold"),
+             bg="#1f6aa5", fg="white").pack(pady=20)
+
+    tk.Button(root, text="OPEN SCHOOL SYSTEM",
+              bg="white", fg="black",
+              width=25,
+              command=lambda: open_main_app(root)).pack(pady=20)
+    set_icon(root)
+    root.mainloop()
+
+
+# ================= OPEN MAIN APP =================
+def open_main_app(dashboard_root):
+    dashboard_root.destroy()
+    root = tk.Tk()
+    set_icon(root)
+    SchoolApp(root)
+    root.mainloop()
+
+
+class SchoolApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("ACADEMIC MANAGEMENT SYSTEM ANGEL NAITBJ®")
+        self.root.geometry("1350x750")
+        self.root.configure(bg="#0b1e3a")
+
+        # VARIABLES
+        self.name = tk.StringVar()
+        self.admission = tk.StringVar()
+        self.gender = tk.StringVar(value="Male")
+        self.class_name = tk.StringVar()
+        self.dob = tk.StringVar()
+        self.parent = tk.StringVar()
+        self.address = tk.StringVar()
+
+        self.term = tk.StringVar(value="First Term")
+        self.year = tk.StringVar()
+        self.subject = tk.StringVar()
+        self.ca = tk.StringVar()
+        self.exam = tk.StringVar()
+
+        # ✅ FIXED MISSING VARIABLE
+        self.search_var = tk.StringVar()
+
+        self.selected_id = None
+        self.selected_result_id = None
+
+        self.ui()
+        self.load_students()
+
+    # ================= UI =================
+    def ui(self):
+        tk.Label(self.root, text="ACADEMIC MANAGEMENT SYSTEM ANGEL NAITBJ®",
+                 font=("Arial", 22, "bold"),
+                 bg="#1f6aa5", fg="white").pack(fill="x")
+
+        form = tk.LabelFrame(self.root, text=" STUDENT FORM ",
+                             bg="#102542", fg="white")
+        form.pack(fill="x", padx=10, pady=5)
+
+        tk.Label(form, text="Name").grid(row=0, column=0)
+        tk.Entry(form, textvariable=self.name).grid(row=0, column=1)
+
+        tk.Label(form, text="Admission").grid(row=0, column=2)
+        tk.Entry(form, textvariable=self.admission).grid(row=0, column=3)
+
+        tk.Label(form, text="Gender").grid(row=1, column=0)
+        ttk.Combobox(form, textvariable=self.gender,
+                     values=["Male", "Female"]).grid(row=1, column=1)
+
+        tk.Label(form, text="Class").grid(row=1, column=2)
+        tk.Entry(form, textvariable=self.class_name).grid(row=1, column=3)
+
+        tk.Label(form, text="DOB").grid(row=2, column=0)
+        tk.Entry(form, textvariable=self.dob).grid(row=2, column=1)
+
+        tk.Label(form, text="Parent").grid(row=2, column=2)
+        tk.Entry(form, textvariable=self.parent).grid(row=2, column=3)
+
+        tk.Label(form, text="Address").grid(row=3, column=0)
+        tk.Entry(form, textvariable=self.address, width=50).grid(row=3, column=1, columnspan=3)
+
+        tk.Button(form, text="ADD", bg="green", command=self.add_student).grid(row=4, column=0)
+        tk.Button(form, text="UPDATE", bg="blue", command=self.update_student).grid(row=4, column=1)
+        tk.Button(form, text="DELETE", bg="red", command=self.delete_student).grid(row=4, column=2)
+        
+        tk.Button(form, text="VIEW RESULT", bg="black", fg="white",
+                  command=self.view_result).grid(row=4, column=3)
+
+        tk.Button(form, text="EXPORT", bg="darkgreen", fg="white",
+                  command=self.export_all).grid(row=4, column=4)
+
+        # ================= SEARCH FIX =================
+        tk.Label(form, text="Search").grid(row=5, column=0)
+
+        tk.Entry(form, textvariable=self.search_var).grid(row=5, column=1)
+
+        tk.Button(form, text="SEARCH", bg="orange",
+                  command=self.search_student).grid(row=5, column=2)
+
+        tk.Button(form, text="RESET", bg="gray",
+                  command=self.load_students).grid(row=5, column=3)
+        tk.Button(form, text="CLEAR", bg="gray", fg="white",
+          command=self.clear_student).grid(row=5, column=4)
+
+        # ================= STUDENT TABLE =================
+        frame1 = tk.Frame(self.root)
+        frame1.pack(fill="both", expand=True)
+
+        y1 = tk.Scrollbar(frame1, orient="vertical")
+        x1 = tk.Scrollbar(frame1, orient="horizontal")
+
+        self.tree = ttk.Treeview(
+            frame1,
+            columns=("ID","Name","Admission","Gender","Class","DOB","Parent","Address"),
+            show="headings",
+            yscrollcommand=y1.set,
+            xscrollcommand=x1.set
+        )
+
+        y1.config(command=self.tree.yview)
+        x1.config(command=self.tree.xview)
+
+        y1.pack(side="right", fill="y")
+        x1.pack(side="bottom", fill="x")
+        self.tree.pack(fill="both", expand=True)
+
+        for c in ("ID","Name","Admission","Gender","Class","DOB","Parent","Address"):
+            self.tree.heading(c, text=c)
+
+        self.tree.bind("<ButtonRelease-1>", self.select_student)
+
+        # ================= RESULT ENTRY =================
+        result = tk.LabelFrame(self.root, text=" RESULT ENTRY ",
+                               bg="#102542", fg="white")
+        result.pack(fill="x", padx=10, pady=5)
+
+        tk.Label(result, text="Term").grid(row=0, column=0)
+        ttk.Combobox(result, textvariable=self.term,
+                     values=["First Term","Second Term","Third Term"]).grid(row=1, column=0)
+
+        tk.Label(result, text="Year").grid(row=0, column=1)
+        tk.Entry(result, textvariable=self.year).grid(row=1, column=1)
+
+        tk.Label(result, text="Subject").grid(row=0, column=2)
+        tk.Entry(result, textvariable=self.subject).grid(row=1, column=2)
+
+        tk.Label(result, text="CA").grid(row=0, column=3)
+        tk.Entry(result, textvariable=self.ca).grid(row=1, column=3)
+
+        tk.Label(result, text="Exam").grid(row=0, column=4)
+        tk.Entry(result, textvariable=self.exam).grid(row=1, column=4)
+
+        tk.Button(result, text="ADD", command=self.add_result).grid(row=1, column=5)
+        tk.Button(result, text="UPDATE", command=self.update_result).grid(row=1, column=6)
+        tk.Button(result, text="DELETE", command=self.delete_result).grid(row=1, column=7)
+        tk.Button(result, text="CLEAR", command=self.clear_result).grid(row=1, column=8)
+
+        # ================= RESULT TABLE =================
+        frame2 = tk.Frame(self.root)
+        frame2.pack(fill="both", expand=True)
+
+        y2 = tk.Scrollbar(frame2, orient="vertical")
+        x2 = tk.Scrollbar(frame2, orient="horizontal")
+
+        self.result_tree = ttk.Treeview(
+            frame2,
+            columns=("ID","Term","Year","Subject","CA","Exam","Total"),
+            show="headings",
+            yscrollcommand=y2.set,
+            xscrollcommand=x2.set
+        )
+
+        y2.pack(side="right", fill="y")
+        x2.pack(side="bottom", fill="x")
+        self.result_tree.pack(fill="both", expand=True)
+
+        for c in ("ID","Term","Year","Subject","CA","Exam","Total"):
+            self.result_tree.heading(c, text=c)
+
+        self.result_tree.bind("<ButtonRelease-1>", self.select_result)
+
+    # ================= SEARCH FIXED =================
+    def search_student(self):
+        key = self.search_var.get().strip()
+        self.tree.delete(*self.tree.get_children())
+
+        if key == "":
+            self.load_students()
+            return
+
+        for r in conn.execute("""
+            SELECT * FROM students
+            WHERE name LIKE ? OR admission LIKE ? OR class_name LIKE ?
+        """, (f"%{key}%", f"%{key}%", f"%{key}%")):
+            self.tree.insert("", "end", values=r)
+
+    # ================= STUDENT FUNCTIONS =================
+    def add_student(self):
+        conn.execute("""
+            INSERT INTO students VALUES(NULL,?,?,?,?,?,?,?)
+        """, (
+            self.name.get(), self.admission.get(), self.gender.get(),
+            self.class_name.get(), self.dob.get(),
+            self.parent.get(), self.address.get()
+        ))
+        conn.commit()
+        self.load_students()
+
+    def load_students(self):
+        self.tree.delete(*self.tree.get_children())
+        for r in conn.execute("SELECT * FROM students"):
+            self.tree.insert("", "end", values=r)
+
+    def select_student(self, e):
+        data = self.tree.item(self.tree.focus(), "values")
+        if data:
+            self.selected_id = data[0]
+            self.load_results()
+
+    def update_student(self):
+        if self.selected_id:
+            conn.execute("""
+                UPDATE students SET name=?, admission=?, gender=?, class_name=?, dob=?, parent=?, address=?
+                WHERE id=?
+            """, (
+                self.name.get(), self.admission.get(), self.gender.get(),
+                self.class_name.get(), self.dob.get(),
+                self.parent.get(), self.address.get(), self.selected_id
+            ))
+            conn.commit()
+            self.load_students()
+
+    def delete_student(self):
+        if self.selected_id:
+            conn.execute("DELETE FROM students WHERE id=?", (self.selected_id,))
+            conn.commit()
+            self.load_students()
+    def clear_student(self):
+                            self.name.set("")
+                            self.admission.set("")
+                            self.gender.set("Male")
+                            self.class_name.set("")
+                            self.dob.set("")
+                            self.parent.set("")
+                            self.address.set("")
+                            self.selected_id = None 
+    # ================= RESULT FUNCTIONS =================
+    def clear_result(self):
+        self.subject.set("")
+        self.ca.set("")
+        self.exam.set("")
+
+    def add_result(self):
+        if not self.selected_id:
+            return
+
+        ca = int(self.ca.get() or 0)
+        exam = int(self.exam.get() or 0)
+        total = ca + exam
+
+        conn.execute("""
+            INSERT INTO results VALUES(NULL,?,?,?,?,?,?,?)
+        """, (self.selected_id, self.term.get(),
+              self.year.get(), self.subject.get(),
+              ca, exam, total))
+        conn.commit()
+        self.load_results()
+
+    def select_result(self, e):
+        data = self.result_tree.item(self.result_tree.focus(), "values")
+        if data:
+            self.selected_result_id = data[0]
+
+    def update_result(self):
+        if self.selected_result_id:
+            ca = int(self.ca.get() or 0)
+            exam = int(self.exam.get() or 0)
+            total = ca + exam
+
+            conn.execute("""
+                UPDATE results SET term=?,year=?,subject=?,ca=?,exam=?,total=?
+                WHERE id=?
+            """, (self.term.get(), self.year.get(),
+                  self.subject.get(), ca, exam, total,
+                  self.selected_result_id))
+            conn.commit()
+            self.load_results()
+
+    def delete_result(self):
+        if self.selected_result_id:
+            conn.execute("DELETE FROM results WHERE id=?", (self.selected_result_id,))
+            conn.commit()
+            self.load_results()
+
+    def load_results(self):
+        self.result_tree.delete(*self.result_tree.get_children())
+        if not self.selected_id:
+            return
+
+        for r in conn.execute("SELECT * FROM results WHERE student_id=?", (self.selected_id,)):
+            self.result_tree.insert("", "end", values=r)
+
+    # ================= VIEW =================
+    def view_result(self):
+                   if not self.selected_id:
+                       messagebox.showerror("Error", "Please select a student first")
+                       return
+                   
+                   win = tk.Toplevel(self.root)
+                   win.title("STUDENT RESULT VIEW")
+                   win.geometry("800x600")
+                   
+                   set_icon(win)  # ✅ CORRECT PLACE
+
+
+                   # ===== FRAME =====
+                   frame = tk.Frame(win)
+                   frame.pack(fill="both", expand=True)
+
+                   # ===== SCROLLBARS =====
+                   y_scroll = tk.Scrollbar(frame, orient="vertical")
+                   x_scroll = tk.Scrollbar(frame, orient="horizontal")
+
+                   text = tk.Text(
+                       frame,
+                       wrap="none",
+                       yscrollcommand=y_scroll.set,
+                       xscrollcommand=x_scroll.set
+                   )
+
+                   y_scroll.config(command=text.yview)
+                   x_scroll.config(command=text.xview)
+
+                   y_scroll.pack(side="right", fill="y")
+                   x_scroll.pack(side="bottom", fill="x")
+                   text.pack(fill="both", expand=True)
+
+                   # ===== STUDENT =====
+                   student = conn.execute(
+                       "SELECT name, class_name FROM students WHERE id=?",
+                       (self.selected_id,)
+                   ).fetchone()
+
+                   name, class_name = student
+
+                   text.insert(tk.END, f"\n{name} ({class_name})\n")
+                   text.insert(tk.END, "=" * 70 + "\n")
+
+                   # ===== GET ALL RESULTS =====
+                   results = conn.execute("""
+                       SELECT term, subject, ca, exam, total
+                       FROM results
+                       WHERE student_id=?
+                       ORDER BY term
+                   """, (self.selected_id,)).fetchall()
+
+                   if not results:
+                       text.insert(tk.END, "No results found\n")
+                       return
+
+                   term_totals = {}
+                   year_total = 0
+
+                   # ===== DISPLAY RESULTS =====
+                   for term, subject, ca, exam, total in results:
+
+                       text.insert(
+                           tk.END,
+                           f"{term} | {subject} | CA:{ca} EX:{exam} TOTAL:{total}\n"
+                       )
+
+                       # ---- TERM TOTAL ----
+                       if term not in term_totals:
+                           term_totals[term] = 0
+                       term_totals[term] += total
+
+                       # ---- YEAR TOTAL ----
+                       year_total += total
+
+                   text.insert(tk.END, "\n" + "-" * 70 + "\n")
+
+                   # ===== SHOW TERM TOTALS =====
+                   text.insert(tk.END, "TERM TOTALS:\n")
+                   for term, t_total in term_totals.items():
+                       text.insert(tk.END, f"{term}: {t_total}\n")
+
+                   # ===== SHOW YEAR TOTAL =====
+                   text.insert(tk.END, "\nYEAR TOTAL:\n")
+                   text.insert(tk.END, f"{year_total}\n")
+
+                   text.insert(tk.END, "=" * 70 + "\n")
+    # ================= EXPORT ===============
+    def export_all(self):
+                                                                     if not self.selected_id:
+                                                                         messagebox.showerror("Error", "Please select a student first")
+                                                                         return
+
+                                                                     # ===== GET STUDENT =====
+                                                                     student = conn.execute(
+                                                                         "SELECT name, class_name FROM students WHERE id=?",
+                                                                         (self.selected_id,)
+                                                                     ).fetchone()
+
+                                                                     if not student:
+                                                                         messagebox.showerror("Error", "Student not found")
+                                                                         return
+
+                                                                     name, class_name = student
+
+                                                                     # ===== GET RESULTS =====
+                                                                     results = conn.execute("""
+                                                                         SELECT term, subject, ca, exam, total
+                                                                         FROM results
+                                                                         WHERE student_id=?
+                                                                         ORDER BY term
+                                                                     """, (self.selected_id,)).fetchall()
+
+                                                                     if not results:
+                                                                         messagebox.showerror("Error", "No results found")
+                                                                         return
+
+                                                                     term_totals = {}
+                                                                     year_total = 0
+
+                                                                     # ================= PDF =================
+                                                                     doc = SimpleDocTemplate("report.pdf")
+                                                                     styles = getSampleStyleSheet()
+                                                                     story = []
+
+                                                                     story.append(Paragraph(f"<b>{name} ({class_name})</b>", styles["Normal"]))
+                                                                     story.append(Spacer(1, 10))
+
+                                                                     for term, subject, ca, exam, total in results:
+                                                                         story.append(Paragraph(
+                                                                             f"{term} | {subject} | CA:{ca} EX:{exam} TOTAL:{total}",
+                                                                             styles["Normal"]
+                                                                         ))
+
+                                                                         term_totals[term] = term_totals.get(term, 0) + total
+                                                                         year_total += total
+
+                                                                     story.append(Spacer(1, 10))
+                                                                     story.append(Paragraph("<b>TERM TOTALS:</b>", styles["Normal"]))
+
+                                                                     for term, total in term_totals.items():
+                                                                         story.append(Paragraph(f"{term}: {total}", styles["Normal"]))
+
+                                                                     story.append(Spacer(1, 10))
+                                                                     story.append(Paragraph(f"<b>YEAR TOTAL: {year_total}</b>", styles["Normal"]))
+
+                                                                     doc.build(story)
+
+                                                                     # ================= EXCEL =================
+                                                                     wb = Workbook()
+                                                                     ws = wb.active
+
+                                                                     ws.append([f"{name} ({class_name})"])
+                                                                     ws.append([])
+
+                                                                     ws.append(["Term", "Subject", "CA", "Exam", "Total"])
+
+                                                                     for term, subject, ca, exam, total in results:
+                                                                         ws.append([term, subject, ca, exam, total])
+
+                                                                     ws.append([])
+                                                                     ws.append(["TERM TOTALS"])
+
+                                                                     for term, total in term_totals.items():
+                                                                         ws.append([term, total])
+
+                                                                     ws.append([])
+                                                                     ws.append(["YEAR TOTAL", year_total])
+
+                                                                     wb.save("report.xlsx")
+
+                                                                     # ===== SUCCESS =====
+                                                                     messagebox.showinfo("Success", "PDF and Excel generated successfully")    
+
+# ================= RUN ==============
+if __name__ == "__main__":
+    root = tk.Tk()
+    set_icon(root)
+    LoginApp(root)
+    root.mainloop()
