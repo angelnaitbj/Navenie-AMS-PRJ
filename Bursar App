@@ -1,0 +1,420 @@
+# ================= BURSAR APP =================
+
+class BursarApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("PAYMENT MANAGEMENT SYSTEM ANGEL NAITBJ®")
+        self.root.state("zoomed")
+        self.root.configure(bg="#0b1e3a")
+        
+        cursor.execute("""
+                       CREATE TABLE IF NOT EXISTS bursar (
+                           id INTEGER PRIMARY KEY AUTOINCREMENT,
+                           student_id TEXT,
+                           name TEXT,
+                           class_name TEXT,
+                           term TEXT,
+                           year TEXT,
+                           school_fee REAL,
+                           pta_levy REAL,
+                           dev_levy REAL,
+                           date_paid TEXT,
+                           teller_name TEXT,
+                           teller_id TEXT
+                       )
+                       """)
+        conn.commit()
+        
+        # VARIABLES
+        self.student_id = tk.StringVar()
+        self.name = tk.StringVar()
+        self.class_name = tk.StringVar()
+        self.term = tk.StringVar(value="First Term")
+        self.year = tk.StringVar()
+
+        self.school_fee = tk.StringVar()
+        self.pta = tk.StringVar()
+        self.dev = tk.StringVar()
+
+        self.date_paid = tk.StringVar()
+        self.teller_name = tk.StringVar()
+        self.teller_id = tk.StringVar()
+        self.search_text = tk.StringVar()
+
+        self.selected_id = None
+
+        self.ui()
+        self.load_data()
+
+    # ================= UI =================
+    def ui(self):
+        tk.Label(
+            self.root,
+            text="PAYMENT MANAGEMENT SYSTEM ANGEL NAITBJ®",
+            font=("Arial", 20, "bold"),
+            bg="#1f6aa5",
+            fg="white"
+        ).pack(fill="x")
+
+        form = tk.LabelFrame(self.root, text=" PAYMENT FORM ",
+                             bg="#102542", fg="white")
+        form.pack(fill="x", padx=10, pady=10)
+
+        # ROW 1
+        tk.Label(form, text="Student ID").grid(row=0, column=0)
+        tk.Entry(form, textvariable=self.student_id).grid(row=0, column=1)
+
+        tk.Label(form, text="Name").grid(row=0, column=2)
+        tk.Entry(form, textvariable=self.name).grid(row=0, column=3)
+
+        tk.Label(form, text="Class").grid(row=0, column=4)
+        tk.Entry(form, textvariable=self.class_name).grid(row=0, column=5)
+
+        # ROW 2
+        tk.Label(form, text="Term").grid(row=1, column=0)
+        ttk.Combobox(form, textvariable=self.term,
+                     values=["First Term", "Second Term", "Third Term"]).grid(row=1, column=1)
+
+        tk.Label(form, text="Year").grid(row=1, column=2)
+        tk.Entry(form, textvariable=self.year).grid(row=1, column=3)
+
+        tk.Label(form, text="School Fee").grid(row=1, column=4)
+        tk.Entry(form, textvariable=self.school_fee).grid(row=1, column=5)
+
+        # ROW 3
+        tk.Label(form, text="PTA Levy").grid(row=2, column=0)
+        tk.Entry(form, textvariable=self.pta).grid(row=2, column=1)
+
+        tk.Label(form, text="Dev Levy").grid(row=2, column=2)
+        tk.Entry(form, textvariable=self.dev).grid(row=2, column=3)
+
+        tk.Label(form, text="Date Paid").grid(row=2, column=4)
+        tk.Entry(form, textvariable=self.date_paid).grid(row=2, column=5)
+
+        # ROW 4
+        tk.Label(form, text="Teller Name").grid(row=3, column=0)
+        tk.Entry(form, textvariable=self.teller_name).grid(row=3, column=1)
+
+        tk.Label(form, text="Teller ID").grid(row=3, column=2)
+        tk.Entry(form, textvariable=self.teller_id).grid(row=3, column=3)
+
+        # ================= BUTTONS =================
+        tk.Button(form, text="ADD", bg="green", fg="white",
+                  command=self.add_payment).grid(row=4, column=0)
+
+        tk.Button(form, text="UPDATE", bg="blue", fg="white",
+                  command=self.update_payment).grid(row=4, column=1)
+
+        tk.Button(form, text="DELETE", bg="red", fg="white",
+                  command=self.delete_payment).grid(row=4, column=2)
+
+        tk.Button(form, text="CLEAR", bg="gray", fg="white",
+                  command=self.clear).grid(row=4, column=3)
+
+        tk.Button(form, text="BACK", bg="black", fg="white",
+                  command=self.back).grid(row=4, column=4)
+        # ================= SEARCH & RECEIPTS =================
+        tk.Label(form, text="Search").grid(row=5, column=0)
+        tk.Entry(form, textvariable=self.search_text).grid(row=5, column=1)
+
+        tk.Button(
+            form,
+            text="SEARCH",
+            bg="orange",
+            fg="white",
+            command=self.search_payment
+        ).grid(row=5, column=2)
+
+        tk.Button(
+            form,
+            text="VIEW RECEIPT",
+            bg="purple",
+            fg="white",
+            command=self.view_receipt
+        ).grid(row=5, column=3)
+
+        tk.Button(
+            form,
+            text="EXPORT RECEIPT",
+            bg="brown",
+            fg="white",
+            command=self.export_receipt
+        ).grid(row=5, column=4)
+       
+
+        # ================= TABLE (WITH SCROLLBARS) =================
+        frame = tk.Frame(self.root)
+        frame.pack(fill="both", expand=True)
+
+        y_scroll = tk.Scrollbar(frame, orient="vertical")
+        x_scroll = tk.Scrollbar(frame, orient="horizontal")
+
+        self.tree = ttk.Treeview(
+            frame,
+            columns=(
+                "ID","Student ID","Name","Class","Term","Year",
+                "Fee","PTA","Dev","Date","Teller","Teller ID"
+            ),
+            show="headings",
+            yscrollcommand=y_scroll.set,
+            xscrollcommand=x_scroll.set
+        )
+
+        y_scroll.config(command=self.tree.yview)
+        x_scroll.config(command=self.tree.xview)
+
+        y_scroll.pack(side="right", fill="y")
+        x_scroll.pack(side="bottom", fill="x")
+
+        self.tree.pack(fill="both", expand=True)
+
+        for c in self.tree["columns"]:
+            self.tree.heading(c, text=c)
+            self.tree.column(c, width=120)
+
+        self.tree.bind("<ButtonRelease-1>", self.select_row)
+
+    # ================= ADD =================
+    def add_payment(self):
+        conn.execute("""
+            INSERT INTO bursar VALUES(NULL,?,?,?,?,?,?,?,?,?,?,?)
+        """, (
+            self.student_id.get(),
+            self.name.get(),
+            self.class_name.get(),
+            self.term.get(),
+            self.year.get(),
+            float(self.school_fee.get() or 0),
+            float(self.pta.get() or 0),
+            float(self.dev.get() or 0),
+            self.date_paid.get(),
+            self.teller_name.get(),
+            self.teller_id.get()
+        ))
+        conn.commit()
+        self.load_data()
+        self.clear()
+    
+
+    # ================= UPDATE =================
+    def update_payment(self):
+        if not self.selected_id:
+            messagebox.showerror("Error", "Select a record first")
+            return
+
+        conn.execute("""
+            UPDATE bursar SET
+            student_id=?,
+            name=?,
+            class_name=?,
+            term=?,
+            year=?,
+            school_fee=?,
+            pta_levy=?,
+            dev_levy=?,
+            date_paid=?,
+            teller_name=?,
+            teller_id=?
+            WHERE id=?
+        """, (
+            self.student_id.get(),
+            self.name.get(),
+            self.class_name.get(),
+            self.term.get(),
+            self.year.get(),
+            float(self.school_fee.get() or 0),
+            float(self.pta.get() or 0),
+            float(self.dev.get() or 0),
+            self.date_paid.get(),
+            self.teller_name.get(),
+            self.teller_id.get(),
+            self.selected_id
+        ))
+
+        conn.commit()
+        self.load_data()
+        self.clear()
+
+    # ================= LOAD =================
+    def load_data(self):
+        self.tree.delete(*self.tree.get_children())
+
+        for r in conn.execute("SELECT * FROM bursar"):
+            self.tree.insert("", "end", values=r)
+      
+    # ================= SELECT =================
+    def select_row(self, e):
+        data = self.tree.item(self.tree.focus(), "values")
+        if data:
+            self.selected_id = data[0]
+
+            self.student_id.set(data[1])
+            self.name.set(data[2])
+            self.class_name.set(data[3])
+            self.term.set(data[4])
+            self.year.set(data[5])
+            self.school_fee.set(data[6])
+            self.pta.set(data[7])
+            self.dev.set(data[8])
+            self.date_paid.set(data[9])
+            self.teller_name.set(data[10])
+            self.teller_id.set(data[11])
+
+    # ================= DELETE =================
+    def delete_payment(self):
+        if self.selected_id:
+            conn.execute("DELETE FROM bursar WHERE id=?", (self.selected_id,))
+            conn.commit()
+            self.load_data()
+            self.clear()
+    def search_payment(self):
+          keyword = self.search_text.get().strip()
+
+          self.tree.delete(*self.tree.get_children())
+
+          rows = conn.execute("""
+              SELECT * FROM bursar
+              WHERE student_id LIKE ?
+              OR name LIKE ?
+              OR class_name LIKE ?
+              OR year LIKE ?
+          """, (
+              f"%{keyword}%",
+              f"%{keyword}%",
+              f"%{keyword}%",
+              f"%{keyword}%"
+          ))
+
+          for row in rows:
+              self.tree.insert("", "end", values=row)
+
+          if keyword == "":
+              self.load_data()
+    def view_receipt(self):
+       if not self.selected_id:
+           messagebox.showerror("Error", "Select a payment first")
+           return
+
+       total = (
+           float(self.school_fee.get() or 0)
+           + float(self.pta.get() or 0)
+           + float(self.dev.get() or 0)
+       )
+
+       receipt = f"""
+   ====================================
+            PAYMENT RECEIPT
+   ====================================
+
+   Student ID : {self.student_id.get()}
+   Name       : {self.name.get()}
+   Class      : {self.class_name.get()}
+   Term       : {self.term.get()}
+   Year       : {self.year.get()}
+
+   School Fee : ₦{self.school_fee.get()}
+   PTA Levy   : ₦{self.pta.get()}
+   Dev Levy   : ₦{self.dev.get()}
+
+   TOTAL PAID : ₦{total:,.2f}
+
+   Date Paid  : {self.date_paid.get()}
+
+   Teller Name: {self.teller_name.get()}
+   Teller ID  : {self.teller_id.get()}
+
+   ====================================
+             THANK YOU
+   ====================================
+   """
+
+       win = tk.Toplevel(self.root)
+       win.title("Payment Receipt")
+       win.geometry("600x500")
+       
+       set_icon(win)
+
+       txt = tk.Text(win, font=("Courier New", 11))
+       txt.pack(fill="both", expand=True)
+
+       txt.insert("1.0", receipt)   
+    def export_receipt(self):
+          if not self.selected_id:
+              messagebox.showerror("Error", "Select a payment first")
+              return
+
+          total = (
+              float(self.school_fee.get() or 0)
+              + float(self.pta.get() or 0)
+              + float(self.dev.get() or 0)
+          )
+
+          file = filedialog.asksaveasfilename(
+              defaultextension=".txt",
+              filetypes=[("Text Files", "*.txt")]
+          )
+
+          if not file:
+              return
+
+          receipt = f"""
+      ====================================
+               PAYMENT RECEIPT
+      ====================================
+
+      Student ID : {self.student_id.get()}
+      Name       : {self.name.get()}
+      Class      : {self.class_name.get()}
+      Term       : {self.term.get()}
+      Year       : {self.year.get()}
+
+      School Fee : ₦{self.school_fee.get()}
+      PTA Levy   : ₦{self.pta.get()}
+      Dev Levy   : ₦{self.dev.get()}
+
+      TOTAL PAID : ₦{total:,.2f}
+
+      Date Paid  : {self.date_paid.get()}
+
+      Teller Name: {self.teller_name.get()}
+      Teller ID  : {self.teller_id.get()}
+
+      ====================================
+                THANK YOU
+      ====================================
+      """
+
+          with open(file, "w", encoding="utf-8") as f:
+              f.write(receipt)
+
+          messagebox.showinfo(
+              "Success",
+              "Receipt exported successfully."
+          )
+    # ================= CLEAR =================
+    def clear(self):
+        self.student_id.set("")
+        self.name.set("")
+        self.class_name.set("")
+        self.term.set("First Term")
+        self.year.set("")
+        self.school_fee.set("")
+        self.pta.set("")
+        self.dev.set("")
+        self.date_paid.set("")
+        self.teller_name.set("")
+        self.teller_id.set("")
+        self.selected_id = None
+
+    # ================= BACK =================
+    def back(self):
+        self.root.destroy()
+        open_dashboard()
+
+# ================= RUN ==============
+if __name__ == "__main__":
+    root = tk.Tk()
+    set_icon(root)
+    LoginApp(root)
+    root.title("NAVENIE AMS")
+    root.mainloop()
