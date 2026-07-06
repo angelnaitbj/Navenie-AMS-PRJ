@@ -1,0 +1,482 @@
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+import sqlite3
+import os
+# ==========================================================
+# ST. PAUL'S SCHOOLS PARENT RESULT PORTAL
+# ==========================================================
+
+app = Flask(__name__)
+
+app.secret_key = "stpauls_parent_portal_secret_key"
+# ==========================================================
+# DATABASE LOCATION
+# ==========================================================
+
+DATABASE = r"C:\Users\naitb\AppData\Roaming\NAVENIE AMS\school.db"
+
+
+# ==========================================================
+# CONNECT DATABASE
+# ==========================================================
+
+def get_db():
+
+    conn = sqlite3.connect(DATABASE)
+
+    conn.row_factory = sqlite3.Row
+
+    return conn
+    # ==========================================================
+# TEST DATABASE
+# ==========================================================
+
+def check_database():
+
+    print("=" * 60)
+    print("ST. PAUL'S SCHOOLS PARENT RESULT PORTAL")
+    print("=" * 60)
+
+    if not os.path.exists(DATABASE):
+
+        print("DATABASE NOT FOUND")
+        print(DATABASE)
+
+        return False
+
+    try:
+
+        conn = get_db()
+
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+
+        tables = cursor.fetchall()
+
+        print("DATABASE CONNECTED SUCCESSFULLY")
+        print()
+
+        print("TABLES FOUND")
+
+        for table in tables:
+
+            print("-", table["name"])
+
+        conn.close()
+
+        print("=" * 60)
+
+        return True
+
+    except Exception as e:
+
+        print("DATABASE CONNECTION FAILED")
+        print(e)
+
+        return False
+        # ==========================================================
+# HOME PAGE
+# ==========================================================
+
+@app.route("/")
+def home():
+
+    return render_template("index.html")
+    # ==========================================================
+# DASHBOARD
+# ==========================================================
+
+@app.route("/dashboard")
+def dashboard():
+
+    if "student_id" not in session:
+
+        return redirect(url_for("home"))
+
+    return render_template("dashboard.html")
+   
+    # ==========================================================
+# LOGIN
+# ==========================================================
+@app.route("/login", methods=["POST"])
+def login():
+
+    try:
+
+        data = request.get_json()
+
+        if not data:
+            return jsonify({
+                "success": False,
+                "message": "No login data received."
+            })
+
+        name = data.get("username", "").strip()
+        admission = data.get("password", "").strip()
+
+        print("\n========== LOGIN ==========")
+        print("Name:", name)
+        print("Admission:", admission)
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT
+                id,
+                name,
+                admission,
+                class_name
+            FROM students
+            WHERE
+                UPPER(TRIM(name)) = UPPER(TRIM(?))
+            AND
+                TRIM(admission) = TRIM(?)
+        """, (name, admission))
+
+        student = cursor.fetchone()
+
+        conn.close()
+
+        if student:
+
+            session["student_id"] = student["id"]
+
+            print("LOGIN SUCCESS")
+
+            return jsonify({
+                "success": True,
+                "student": {
+                    "id": student["id"],
+                    "name": student["name"],
+                    "admission": student["admission"],
+                    "class_name": student["class_name"]
+                }
+            })
+
+        print("LOGIN FAILED")
+
+        return jsonify({
+            "success": False,
+            "message": "Invalid Student Name or Admission Number."
+        })
+
+    except Exception as e:
+
+        print("LOGIN ERROR:", e)
+
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        })
+        # ==========================================================
+# STUDENT INFORMATION
+# ==========================================================
+
+@app.route("/student")
+def student():
+
+    # Check if the student is logged in
+    if "student_id" not in session:
+        return jsonify({
+            "success": False,
+            "message": "User not logged in."
+        })
+
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT
+                id,
+                name,
+                admission,
+                class_name
+            FROM students
+            WHERE id = ?
+        """, (session["student_id"],))
+
+        student = cursor.fetchone()
+
+        conn.close()
+
+        if student is None:
+            return jsonify({
+                "success": False,
+                "message": "Student record not found."
+            })
+
+        # Print the student record to the Flask terminal for debugging
+        print("Student Record:", dict(student))
+
+        return jsonify({
+            "success": True,
+            "student": {
+                "id": student["id"],
+                "name": student["name"],
+                "admission": student["admission"],
+                "class_name": student["class_name"]
+            }
+        })
+
+    except Exception as e:
+        print("STUDENT ERROR:", e)
+
+        return jsonify({
+            "success": False,
+            "message": str(e)
+        })
+
+
+        # ==========================================================
+# LOAD STUDENT RESULTS
+# ==========================================================
+
+@app.route("/results", methods=["POST"])
+def results():
+
+    if "student_id" not in session:
+
+        return jsonify({
+
+            "success": False,
+
+            "message": "Please login first."
+
+        })
+
+    try:
+
+        data = request.get_json()
+
+        year = data.get("year", "").strip()
+
+        term = data.get("term", "").strip()
+
+        conn = get_db()
+
+        cursor = conn.cursor()
+
+        # --------------------------------------------------
+        # If no term is selected, return ALL terms for year
+        # --------------------------------------------------
+
+        if term == "":
+
+            cursor.execute("""
+
+                SELECT
+                    subject,
+                    ca,
+                    exam,
+                    total,
+                    grade,
+                    term,
+                    year
+
+                FROM results
+
+                WHERE
+                    student_id = ?
+                    AND year = ?
+
+                ORDER BY term, subject
+
+            """, (session["student_id"], year))
+
+        else:
+
+            cursor.execute("""
+
+                SELECT
+                    subject,
+                    ca,
+                    exam,
+                    total,
+                    grade,
+                    term,
+                    year
+
+                FROM results
+
+                WHERE
+                    student_id = ?
+                    AND year = ?
+                    AND term = ?
+
+                ORDER BY subject
+
+            """, (session["student_id"], year, term))
+
+        rows = cursor.fetchall()
+
+        conn.close()
+
+        return jsonify({
+
+            "success": True,
+
+            "results": [dict(r) for r in rows]
+
+        })
+
+    except Exception as e:
+
+        print("RESULT ERROR:", e)
+
+        return jsonify({
+
+            "success": False,
+
+            "message": str(e)
+
+        })
+        # ==========================================================
+# LOGOUT
+# ==========================================================
+
+@app.route("/logout")
+def logout():
+
+    session.clear()
+
+    return redirect(url_for("home"))
+
+
+# ==========================================================
+# PRINT ST. PAUL'S SCHOOLS PARENT RESULT PORTAL
+# ==========================================================
+from flask import send_file
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import inch
+import tempfile
+
+@app.route("/download_result")
+def download_result():
+
+    if "student_id" not in session:
+        return redirect(url_for("home"))
+
+    year = request.args.get("year")
+    term = request.args.get("term")
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Student information
+    cursor.execute("""
+        SELECT name, admission, class_name
+        FROM students
+        WHERE id=?
+    """, (session["student_id"],))
+
+    student = cursor.fetchone()
+
+    # Results
+    if term:
+        cursor.execute("""
+            SELECT subject, ca, exam, total, grade
+            FROM results
+            WHERE student_id=? AND year=? AND term=?
+            ORDER BY subject
+        """, (session["student_id"], year, term))
+    else:
+        cursor.execute("""
+            SELECT subject, ca, exam, total, grade, term
+            FROM results
+            WHERE student_id=? AND year=?
+            ORDER BY term, subject
+        """, (session["student_id"], year))
+
+    results = cursor.fetchall()
+    conn.close()
+
+    pdf = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+
+    doc = SimpleDocTemplate(pdf.name)
+
+    styles = getSampleStyleSheet()
+
+    story = []
+
+    story.append(Paragraph("<b>ST. PAUL'S SCHOOLS</b>", styles["Title"]))
+    story.append(Paragraph("New Kutunku, Gwagwalada, Abuja", styles["Normal"]))
+    story.append(Paragraph("<br/>", styles["Normal"]))
+
+    story.append(Paragraph(f"<b>Name:</b> {student['name']}", styles["Normal"]))
+    story.append(Paragraph(f"<b>Admission:</b> {student['admission']}", styles["Normal"]))
+    story.append(Paragraph(f"<b>Class:</b> {student['class_name']}", styles["Normal"]))
+    story.append(Paragraph(f"<b>Session:</b> {year}", styles["Normal"]))
+
+    if term:
+        story.append(Paragraph(f"<b>Term:</b> {term}", styles["Normal"]))
+
+    story.append(Paragraph("<br/>", styles["Normal"]))
+
+    table_data = [["Subject", "CA", "Exam", "Total", "Grade"]]
+
+    total = 0
+
+    for r in results:
+
+        table_data.append([
+            r["subject"],
+            r["ca"],
+            r["exam"],
+            r["total"],
+            r["grade"]
+        ])
+
+        total += r["total"]
+
+    table = Table(table_data)
+
+    table.setStyle(TableStyle([
+        ("GRID",(0,0),(-1,-1),1,colors.black),
+        ("BACKGROUND",(0,0),(-1,0),colors.darkblue),
+        ("TEXTCOLOR",(0,0),(-1,0),colors.white),
+        ("ALIGN",(0,0),(-1,-1),"CENTER"),
+        ("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),
+        ("BOTTOMPADDING",(0,0),(-1,0),8)
+    ]))
+
+    story.append(table)
+
+    story.append(Paragraph("<br/>", styles["Normal"]))
+    story.append(Paragraph(f"<b>Total:</b> {total}", styles["Heading2"]))
+
+    if len(results):
+        story.append(Paragraph(
+            f"<b>Average:</b> {round(total/len(results),2)}",
+            styles["Heading2"]
+        ))
+
+    doc.build(story)
+
+    return send_file(
+        pdf.name,
+        as_attachment=True,
+        download_name=f"{student['name']}_{year}_Result.pdf",
+        mimetype="application/pdf"
+    )
+     # ==========================================================
+# START SERVER
+# ==========================================================
+
+if __name__ == "__main__":
+
+    check_database()
+
+    print()
+    print("Open your browser:")
+    print("http://127.0.0.1:5000")
+    print()
+
+    app.run(
+        host="127.0.0.1",
+        port=5000,
+        debug=True
+    )
