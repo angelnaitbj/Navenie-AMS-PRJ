@@ -15,7 +15,6 @@ ICONIC UNIVERSITY PROJECT CAPSTONE
 
 The project also includes a **Parent Result Checking Portal**, a Flask-powered web application that allows parents and guardians to securely access students' academic results through a web browser.
 
----
 
 # Components
 
@@ -40,7 +39,6 @@ The offline desktop application designed for school administrators, examination 
 * Secure Offline Operation
 * Backup & Restore Support
 
----
 
 ## 2. NAVENIE AMS.exe (Parent Result Checking Portal)
 
@@ -58,7 +56,6 @@ A Flask-powered web application that enables parents and guardians to securely a
 * Direct Connection to NAVENIE AMS Database
 * Session-Based Authentication
 
----
 
 # Technologies Used
 
@@ -75,7 +72,6 @@ A Flask-powered web application that enables parents and guardians to securely a
 * PyInstaller
 * Inno Setup Compiler
 
----
 
 # Project Structure
 
@@ -93,9 +89,7 @@ NAVENIE AMS
 │
 └── Database
       school.db
-```
 
----
 
 # Parent Result Portal
 
@@ -114,7 +108,6 @@ After successful login, parents can:
 * View Examination Results
 * Download or Print Result Sheets
 
----
 
 # Running the Parent Result Portal
 
@@ -142,7 +135,6 @@ http://127.0.0.1:5000
 
 The Parent Result Checking Portal login page will be displayed.
 
----
 
 # System Requirements
 
@@ -151,7 +143,6 @@ The Parent Result Checking Portal login page will be displayed.
 * Modern Web Browser (Chrome, Edge, Firefox, etc.)
 * SQLite Database
 
----
 
 # Default Database Location
 
@@ -161,7 +152,6 @@ The Parent Result Checking Portal login page will be displayed.
 
 The Parent Result Portal automatically connects to the existing NAVENIE AMS database.
 
----
 
 # Installation
 
@@ -191,7 +181,6 @@ http://127.0.0.1:5000
 
 or allow the application to automatically launch your default web browser if configured.
 
----
 
 # Security Features
 
@@ -201,7 +190,6 @@ or allow the application to automatically launch your default web browser if con
 * Secure Local SQLite Database
 * Unauthorized Access Prevention
 
----
 
 # Future Enhancements
 
@@ -212,13 +200,11 @@ or allow the application to automatically launch your default web browser if con
 * Student Portal
 * Teacher Portal
 * Parent Portal Enhancements
-* Bursary & Finance Module
 * Mobile Application
 * Online Payment Integration
 * Multi-School Management
 * Cloud Backup & Restore
 
----
 
 # Developer
 
@@ -232,19 +218,16 @@ or allow the application to automatically launch your default web browser if con
 
 Developer of the **NAVENIE Academic Management System (NAVENIE AMS)** and the **Parent Result Checking Portal**, focused on building innovative educational technologies that enhance school administration, academic management, and digital transformation within educational institutions.
 
----
 
 # License
 
 This project is released under the **MIT License**.
 
----
 
 # Acknowledgements
 
 Special appreciation to all contributors, testers, educational institutions, and users whose feedback and support have contributed to the continuous development and improvement of the NAVENIE Academic Management System.
 
----
 
 ## ⭐ Support the Project
 
