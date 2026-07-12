@@ -226,7 +226,11 @@ This project is released under the **MIT License**.
 
 # Acknowledgements
 
-Special appreciation to all contributors, testers, educational institutions, and users whose feedback and support have contributed to the continuous development and improvement of the NAVENIE Academic Management System.
+Special Appreciation
+
+Special appreciation goes to Iconic Open University, Sokoto, for providing the academic environment and opportunity for this project, and to my project supervisor, Dr. Ajayi Olugbenga, for his invaluable guidance, encouragement, constructive feedback, and professional support throughout the development of the system.
+
+I also extend my sincere gratitude to all contributors, testers, educational institutions, and users whose feedback, suggestions, and support have contributed to the continuous development, refinement, and improvement of the NAVENIE Academic Management System (AMS).
 
 
 ## ⭐ Support the Project
