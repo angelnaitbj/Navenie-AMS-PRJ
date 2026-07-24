@@ -275,7 +275,8 @@ class LoginApp:
         tk.Label(win, text="New Password").pack(pady=5)
         new = tk.Entry(win, show="*")
         new.pack()
-
+        set_icon(win)
+        
         def update_pass():
             if cursor.execute(
                 "SELECT * FROM users WHERE username='admin' AND password=?",
@@ -308,7 +309,7 @@ class LoginApp:
             fg="white",
             command=update_pass
         ).pack(pady=15)
-
+        set_icon(win)
     # ================= FORGOT PASSWORD =================
     def forgot_password(self):
         win = tk.Toplevel(self.root)
@@ -322,7 +323,7 @@ class LoginApp:
         tk.Label(win, text="New Password").pack(pady=5)
         new_pass = tk.Entry(win, show="*")
         new_pass.pack()
-
+        set_icon(root)
         def reset():
             user = username_entry.get()
             pwd = new_pass.get()
@@ -367,7 +368,7 @@ class LoginApp:
             fg="white",
             command=reset
         ).pack(pady=15)
-
+        set_icon(win)
 # ================= DASHBOARD =================
 def logout(dashboard):
     if messagebox.askyesno("Logout", "Are you sure you want to logout?"):
